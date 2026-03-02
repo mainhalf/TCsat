@@ -1,0 +1,90 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>卫星数据一体化运维中心</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background-color: #020617;
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    .font-orbitron {
+      font-family: 'Orbitron', sans-serif;
+    }
+    /* Cyberpunk scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #38bdf8;
+      border-radius: 2px;
+    }
+    /* Glow effects */
+    .glow-blue {
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    /* 3D Utilities */
+    .perspective-1200 {
+      perspective: 1200px;
+    }
+    .preserve-3d {
+      transform-style: preserve-3d;
+    }
+    
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Custom scrollbar for small areas */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.2);
+    }
+
+    /* Isometric Helpers */
+    .rotate-x-45 { transform: rotateX(45deg); }
+    .-rotate-x-45 { transform: rotateX(-45deg); }
+    .-rotate-z-45 { transform: rotateZ(-45deg); }
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "recharts": "https://esm.sh/recharts@^3.7.0",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "d3": "https://esm.sh/d3@^7.9.0",
+    "topojson-client": "https://esm.sh/topojson-client@^3.1.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+  <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>

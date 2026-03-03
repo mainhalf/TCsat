@@ -27,7 +27,10 @@ import {
   ListFilter,
   ChevronRight,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Search,
+  Info,
+  ChevronDown
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -45,8 +48,10 @@ import {
 interface MonitoringStation {
   id: string;
   name: string;
+  country: string;
   province: string;
   city: string;
+  county: string;
   type: 'air' | 'water' | 'sound';
   coords: { x: number; y: number; lat: string; lng: string; };
   status: 'excellent' | 'good' | 'polluted' | 'critical';
@@ -67,6 +72,15 @@ interface MonitoringStation {
     nh3n?: number;
     tp?: number;
     tn?: number;
+    basin?: string;
+    sectionName?: string;
+    monitoringTime?: string;
+    waterQualityCategory?: string;
+    waterTemp?: number;
+    conductivity?: number;
+    permanganateIndex?: number;
+    chlorophyllA?: number;
+    algalDensity?: number;
     // Sound specific
     noise?: number;
     freq?: number;
@@ -88,8 +102,12 @@ interface MonitoringStation {
 const GroundNetworkView: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [selectedCounty, setSelectedCounty] = useState<string | null>(null);
+  const [isRegionMenuOpen, setIsRegionMenuOpen] = useState(false);
+  const [menuLevel, setMenuLevel] = useState(0);
   const [tick, setTick] = useState(0);
   const [airSortOrder, setAirSortOrder] = useState<'asc' | 'desc'>('desc');
   const [waterSortOrder, setWaterSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -97,6 +115,8 @@ const GroundNetworkView: React.FC = () => {
   const [rankingTab, setRankingTab] = useState<'air' | 'water' | 'sound'>('air');
   const [isLegendExpanded, setIsLegendExpanded] = useState(false);
   const [legendType, setLegendType] = useState<'air' | 'water' | 'sound'>('air');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setTick(t => t + 1), 3000);
@@ -104,144 +124,183 @@ const GroundNetworkView: React.FC = () => {
   }, []);
 
   const STATIONS: MonitoringStation[] = useMemo(() => {
-    const provinces = [
-      { name: '北京', id: 'BJ', lat: 39.9, lng: 116.4 },
-      { name: '上海', id: 'SH', lat: 31.2, lng: 121.4 },
-      { name: '广东', id: 'GD', lat: 23.1, lng: 113.2 },
-      { name: '四川', id: 'SC', lat: 30.6, lng: 104.0 },
-      { name: '陕西', id: 'SX', lat: 34.2, lng: 108.9 },
-      { name: '浙江', id: 'ZJ', lat: 30.2, lng: 120.1 },
-      { name: '江苏', id: 'JS', lat: 32.0, lng: 118.7 },
-      { name: '湖北', id: 'HB', lat: 30.5, lng: 114.3 },
+    const countries = [
+      { 
+        name: '中国', 
+        provinces: [
+          { name: '北京', id: 'BJ', lat: 39.9, lng: 116.4 },
+          { name: '上海', id: 'SH', lat: 31.2, lng: 121.4 },
+          { name: '广东', id: 'GD', lat: 23.1, lng: 113.2 },
+        ]
+      },
+      { 
+        name: '美国', 
+        provinces: [
+          { name: '纽约州', id: 'NY', lat: 40.7, lng: -74.0 },
+          { name: '加利福尼亚', id: 'CA', lat: 34.0, lng: -118.2 },
+        ]
+      },
+      { 
+        name: '日本', 
+        provinces: [
+          { name: '东京都', id: 'TYO', lat: 35.7, lng: 139.7 },
+        ]
+      },
+      { 
+        name: '英国', 
+        provinces: [
+          { name: '大伦敦', id: 'LDN', lat: 51.5, lng: -0.1 },
+        ]
+      }
     ];
 
     const generated: MonitoringStation[] = [];
-    provinces.forEach(p => {
-      const cities = [
-        { name: '中心城区', offset: [0, 0] },
-        { name: '北部新区', offset: [0, 0.8] },
-        { name: '南部工业区', offset: [0, -0.8] },
-        { name: '东部开发区', offset: [0.8, 0] },
-      ];
+    countries.forEach(c => {
+      c.provinces.forEach(p => {
+        const cities = [
+          { name: '中心城区', offset: [0, 0], counties: ['一号县', '二号县'] },
+          { name: '北部新区', offset: [0, 0.8], counties: ['三号县', '四号县'] },
+          { name: '南部工业区', offset: [0, -0.8], counties: ['五号县', '六号县'] },
+          { name: '东部开发区', offset: [0.8, 0], counties: ['七号县', '八号县'] },
+        ];
 
-      // Generate Air Stations
-      for (let i = 0; i < 10; i++) {
-        const cityIndex = Math.floor(i / 2.5);
-        const city = cities[cityIndex % 4];
-        const index = Math.floor(20 + Math.random() * 230);
-        const status = index < 50 ? 'excellent' : index < 100 ? 'good' : index < 200 ? 'polluted' : 'critical';
-        generated.push({
-          id: `AIR-${p.id}-${i}`,
-          name: `${p.name}${city.name}空气站 #${i + 1}`,
-          province: p.name,
-          city: `${p.name}${city.name}`,
-          type: 'air',
-          coords: { 
-            x: 0, y: 0, 
-            lat: (p.lat + city.offset[1] + (Math.random() - 0.5) * 0.8).toFixed(2) + (p.lat > 0 ? 'N' : 'S'),
-            lng: (p.lng + city.offset[0] + (Math.random() - 0.5) * 0.8).toFixed(2) + (p.lng > 0 ? 'E' : 'W')
-          },
-          status,
-          metrics: { 
-            index, 
-            pm25: Math.floor(index * 0.7), 
-            pm10: Math.floor(index * 1.2), 
-            co: Number((0.2 + Math.random() * 1.5).toFixed(1)), 
-            co2: 380 + Math.floor(Math.random() * 100), 
-            so2: 5 + Math.floor(Math.random() * 30), 
-            no2: 10 + Math.floor(Math.random() * 60), 
-            o3: 20 + Math.floor(Math.random() * 180) 
-          },
-          deviceStatus: { 
-            sensorHealth: 85 + Math.floor(Math.random() * 15), 
-            battery: 30 + Math.floor(Math.random() * 70), 
-            signal: 70 + Math.floor(Math.random() * 30), 
-            lastSync: Math.floor(Math.random() * 60) + 's前', 
-            temp: Math.floor(Math.random() * 35), 
-            humi: 20 + Math.floor(Math.random() * 60), 
-            syncRate: 90 + Math.random() * 10, 
-            load: 20 + Math.floor(Math.random() * 70) 
-          }
-        });
-      }
+        // Generate Air Stations
+        for (let i = 0; i < 6; i++) {
+          const cityIndex = Math.floor(i / 1.5);
+          const city = cities[cityIndex % 4];
+          const county = city.counties[i % 2];
+          const index = Math.floor(20 + Math.random() * 230);
+          const status = index < 50 ? 'excellent' : index < 100 ? 'good' : index < 200 ? 'polluted' : 'critical';
+          generated.push({
+            id: `AIR-${p.id}-${i}`,
+            name: `${c.name}${p.name}${city.name}${county}空气站 #${i + 1}`,
+            country: c.name,
+            province: p.name,
+            city: city.name,
+            county: county,
+            type: 'air',
+            coords: { 
+              x: 0, y: 0, 
+              lat: (p.lat + city.offset[1] + (Math.random() - 0.5) * 0.4).toFixed(2) + (p.lat > 0 ? 'N' : 'S'),
+              lng: (p.lng + city.offset[0] + (Math.random() - 0.5) * 0.4).toFixed(2) + (p.lng > 0 ? 'E' : 'W')
+            },
+            status,
+            metrics: { 
+              index, 
+              pm25: Math.floor(index * 0.7), 
+              pm10: Math.floor(index * 1.2), 
+              co: Number((0.2 + Math.random() * 1.5).toFixed(1)), 
+              co2: 380 + Math.floor(Math.random() * 100), 
+              so2: 5 + Math.floor(Math.random() * 30), 
+              no2: 10 + Math.floor(Math.random() * 60), 
+              o3: 20 + Math.floor(Math.random() * 180) 
+            },
+            deviceStatus: { 
+              sensorHealth: 85 + Math.floor(Math.random() * 15), 
+              battery: 30 + Math.floor(Math.random() * 70), 
+              signal: 70 + Math.floor(Math.random() * 30), 
+              lastSync: Math.floor(Math.random() * 60) + 's前', 
+              temp: Math.floor(Math.random() * 35), 
+              humi: 20 + Math.floor(Math.random() * 60), 
+              syncRate: 90 + Math.random() * 10, 
+              load: 20 + Math.floor(Math.random() * 70) 
+            }
+          });
+        }
 
-      // Generate Water Stations
-      for (let i = 0; i < 10; i++) {
-        const cityIndex = Math.floor(i / 2.5);
-        const city = cities[cityIndex % 4];
-        const index = Math.floor(20 + Math.random() * 100); // WQI usually 0-100
-        const status = index > 80 ? 'excellent' : index > 60 ? 'good' : index > 40 ? 'polluted' : 'critical';
-        generated.push({
-          id: `WATER-${p.id}-${i}`,
-          name: `${p.name}${city.name}水质站 #${i + 1}`,
-          province: p.name,
-          city: `${p.name}${city.name}`,
-          type: 'water',
-          coords: { 
-            x: 0, y: 0, 
-            lat: (p.lat + city.offset[1] + (Math.random() - 0.5) * 0.8).toFixed(2) + (p.lat > 0 ? 'N' : 'S'),
-            lng: (p.lng + city.offset[0] + (Math.random() - 0.5) * 0.8).toFixed(2) + (p.lng > 0 ? 'E' : 'W')
-          },
-          status,
-          metrics: { 
-            index, 
-            ph: Number((6.5 + Math.random() * 2).toFixed(1)),
-            do: Number((4 + Math.random() * 6).toFixed(1)),
-            turbidity: Number((1 + Math.random() * 10).toFixed(1)),
-            nh3n: Number((0.1 + Math.random() * 2).toFixed(2)),
-            tp: Number((0.02 + Math.random() * 0.5).toFixed(2)),
-            tn: Number((0.5 + Math.random() * 5).toFixed(2)),
-          },
-          deviceStatus: { 
-            sensorHealth: 85 + Math.floor(Math.random() * 15), 
-            battery: 30 + Math.floor(Math.random() * 70), 
-            signal: 70 + Math.floor(Math.random() * 30), 
-            lastSync: Math.floor(Math.random() * 60) + 's前', 
-            temp: 15 + Math.floor(Math.random() * 10), // Water temp
-            humi: 80 + Math.floor(Math.random() * 20), 
-            syncRate: 90 + Math.random() * 10, 
-            load: 20 + Math.floor(Math.random() * 70) 
-          }
-        });
-      }
+        // Generate Water Stations
+        for (let i = 0; i < 6; i++) {
+          const cityIndex = Math.floor(i / 1.5);
+          const city = cities[cityIndex % 4];
+          const county = city.counties[i % 2];
+          const index = Math.floor(20 + Math.random() * 100);
+          const status = index > 80 ? 'excellent' : index > 60 ? 'good' : index > 40 ? 'polluted' : 'critical';
+          generated.push({
+            id: `WATER-${p.id}-${i}`,
+            name: `${c.name}${p.name}${city.name}${county}水质站 #${i + 1}`,
+            country: c.name,
+            province: p.name,
+            city: city.name,
+            county: county,
+            type: 'water',
+            coords: { 
+              x: 0, y: 0, 
+              lat: (p.lat + city.offset[1] + (Math.random() - 0.5) * 0.4).toFixed(2) + (p.lat > 0 ? 'N' : 'S'),
+              lng: (p.lng + city.offset[0] + (Math.random() - 0.5) * 0.4).toFixed(2) + (p.lng > 0 ? 'E' : 'W')
+            },
+            status,
+            metrics: { 
+              index, 
+              ph: Number((6.5 + Math.random() * 2).toFixed(1)),
+              do: Number((4 + Math.random() * 6).toFixed(1)),
+              turbidity: Number((1 + Math.random() * 10).toFixed(1)),
+              nh3n: Number((0.1 + Math.random() * 2).toFixed(2)),
+              tp: Number((0.02 + Math.random() * 0.5).toFixed(2)),
+              tn: Number((0.5 + Math.random() * 5).toFixed(2)),
+              basin: ['长江流域', '黄河流域', '珠江流域', '淮河流域'][Math.floor(Math.random() * 4)],
+              sectionName: `${p.name}${city.name}断面`,
+              monitoringTime: new Date().toISOString().split('T')[0],
+              waterQualityCategory: ['Ⅰ类', 'Ⅱ类', 'Ⅲ类', 'Ⅳ类', 'Ⅴ类'][Math.floor(Math.random() * 5)],
+              waterTemp: Number((15 + Math.random() * 10).toFixed(1)),
+              conductivity: Math.floor(200 + Math.random() * 800),
+              permanganateIndex: Number((1 + Math.random() * 5).toFixed(1)),
+              chlorophyllA: Number((0.001 + Math.random() * 0.05).toFixed(3)),
+              algalDensity: Math.floor(1000 + Math.random() * 9000),
+            },
+            deviceStatus: { 
+              sensorHealth: 85 + Math.floor(Math.random() * 15), 
+              battery: 30 + Math.floor(Math.random() * 70), 
+              signal: 70 + Math.floor(Math.random() * 30), 
+              lastSync: Math.floor(Math.random() * 60) + 's前', 
+              temp: 15 + Math.floor(Math.random() * 10),
+              humi: 80 + Math.floor(Math.random() * 20), 
+              syncRate: 90 + Math.random() * 10, 
+              load: 20 + Math.floor(Math.random() * 70) 
+            }
+          });
+        }
 
-      // Generate Sound Stations
-      for (let i = 0; i < 10; i++) {
-        const cityIndex = Math.floor(i / 2.5);
-        const city = cities[cityIndex % 4];
-        const index = Math.floor(30 + Math.random() * 60); // Noise level in dB
-        const status = index < 55 ? 'excellent' : index < 70 ? 'good' : index < 85 ? 'polluted' : 'critical';
-        generated.push({
-          id: `SOUND-${p.id}-${i}`,
-          name: `${p.name}${city.name}声环站 #${i + 1}`,
-          province: p.name,
-          city: `${p.name}${city.name}`,
-          type: 'sound',
-          coords: { 
-            x: 0, y: 0, 
-            lat: (p.lat + city.offset[1] + (Math.random() - 0.5) * 0.8).toFixed(2) + (p.lat > 0 ? 'N' : 'S'),
-            lng: (p.lng + city.offset[0] + (Math.random() - 0.5) * 0.8).toFixed(2) + (p.lng > 0 ? 'E' : 'W')
-          },
-          status,
-          metrics: { 
-            index, 
-            noise: index,
-            freq: 50 + Math.floor(Math.random() * 450),
-            dbMax: index + Math.floor(Math.random() * 15),
-            dbMin: Math.max(20, index - Math.floor(Math.random() * 10)),
-          },
-          deviceStatus: { 
-            sensorHealth: 85 + Math.floor(Math.random() * 15), 
-            battery: 30 + Math.floor(Math.random() * 70), 
-            signal: 70 + Math.floor(Math.random() * 30), 
-            lastSync: Math.floor(Math.random() * 60) + 's前', 
-            temp: 15 + Math.floor(Math.random() * 15),
-            humi: 40 + Math.floor(Math.random() * 40), 
-            syncRate: 90 + Math.random() * 10, 
-            load: 10 + Math.floor(Math.random() * 40) 
-          }
-        });
-      }
+        // Generate Sound Stations
+        for (let i = 0; i < 6; i++) {
+          const cityIndex = Math.floor(i / 1.5);
+          const city = cities[cityIndex % 4];
+          const county = city.counties[i % 2];
+          const index = Math.floor(30 + Math.random() * 60);
+          const status = index < 55 ? 'excellent' : index < 70 ? 'good' : index < 85 ? 'polluted' : 'critical';
+          generated.push({
+            id: `SOUND-${p.id}-${i}`,
+            name: `${c.name}${p.name}${city.name}${county}声环站 #${i + 1}`,
+            country: c.name,
+            province: p.name,
+            city: city.name,
+            county: county,
+            type: 'sound',
+            coords: { 
+              x: 0, y: 0, 
+              lat: (p.lat + city.offset[1] + (Math.random() - 0.5) * 0.4).toFixed(2) + (p.lat > 0 ? 'N' : 'S'),
+              lng: (p.lng + city.offset[0] + (Math.random() - 0.5) * 0.4).toFixed(2) + (p.lng > 0 ? 'E' : 'W')
+            },
+            status,
+            metrics: { 
+              index, 
+              noise: index,
+              freq: 50 + Math.floor(Math.random() * 450),
+              dbMax: index + Math.floor(Math.random() * 15),
+              dbMin: Math.max(20, index - Math.floor(Math.random() * 10)),
+            },
+            deviceStatus: { 
+              sensorHealth: 85 + Math.floor(Math.random() * 15), 
+              battery: 30 + Math.floor(Math.random() * 70), 
+              signal: 70 + Math.floor(Math.random() * 30), 
+              lastSync: Math.floor(Math.random() * 60) + 's前', 
+              temp: 15 + Math.floor(Math.random() * 15),
+              humi: 40 + Math.floor(Math.random() * 40), 
+              syncRate: 90 + Math.random() * 10, 
+              load: 10 + Math.floor(Math.random() * 40) 
+            }
+          });
+        }
+      });
     });
     return generated;
   }, []);
@@ -268,6 +327,38 @@ const GroundNetworkView: React.FC = () => {
     if (!selectedId) return STATIONS[0];
     return STATIONS.find(s => s.id === selectedId) || STATIONS[0];
   }, [selectedId, STATIONS]);
+
+  const countries = useMemo(() => {
+    return Array.from(new Set(STATIONS.map(s => s.country))).sort();
+  }, [STATIONS]);
+
+  const provinces = useMemo(() => {
+    return Array.from(new Set(STATIONS.filter(s => !selectedCountry || s.country === selectedCountry).map(s => s.province))).sort();
+  }, [STATIONS, selectedCountry]);
+
+  const cities = useMemo(() => {
+    return Array.from(new Set(STATIONS.filter(s => 
+      (!selectedCountry || s.country === selectedCountry) && 
+      (!selectedProvince || s.province === selectedProvince)
+    ).map(s => s.city))).sort();
+  }, [STATIONS, selectedCountry, selectedProvince]);
+
+  const counties = useMemo(() => {
+    return Array.from(new Set(STATIONS.filter(s => 
+      (!selectedCountry || s.country === selectedCountry) && 
+      (!selectedProvince || s.province === selectedProvince) &&
+      (!selectedCity || s.city === selectedCity)
+    ).map(s => s.county))).sort();
+  }, [STATIONS, selectedCountry, selectedProvince, selectedCity]);
+
+  const searchResults = useMemo(() => {
+    if (!searchTerm.trim()) return [];
+    return STATIONS.filter(s => 
+      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.county.toLowerCase().includes(searchTerm.toLowerCase())
+    ).slice(0, 5);
+  }, [STATIONS, searchTerm]);
   
   const getLegendItems = (type: 'air' | 'water' | 'sound') => {
     if (type === 'air') return [
@@ -374,14 +465,23 @@ const GroundNetworkView: React.FC = () => {
                      </>
                    ) : activeStation.type === 'water' ? (
                      <>
-                       <EnvMetric icon={<Droplets size={16}/>} label="pH 酸碱度" value={activeStation.metrics.ph?.toString()} unit="pH" color="text-sky-400" />
-                       <EnvMetric icon={<Zap size={16}/>} label="溶解氧" value={activeStation.metrics.do?.toString()} unit="mg/L" color="text-indigo-400" />
-                       <EnvMetric icon={<Wind size={16}/>} label="浑浊度" value={activeStation.metrics.turbidity?.toString()} unit="NTU" color="text-emerald-400" />
-                       <EnvMetric icon={<FlaskConical size={16}/>} label="氨氮" value={activeStation.metrics.nh3n?.toString()} unit="mg/L" color="text-amber-400" />
-                       <EnvMetric icon={<FlaskConical size={16}/>} label="总磷" value={activeStation.metrics.tp?.toString()} unit="mg/L" color="text-rose-400" />
-                       <EnvMetric icon={<FlaskConical size={16}/>} label="总氮" value={activeStation.metrics.tn?.toString()} unit="mg/L" color="text-cyan-400" />
-                       <EnvMetric icon={<Thermometer size={16}/>} label="水体温度" value={activeStation.deviceStatus.temp.toString()} unit="°C" color="text-sky-400" />
-                       <EnvMetric icon={<ShieldCheck size={16}/>} label="传感器健康" value={activeStation.deviceStatus.sensorHealth.toString()} unit="%" color="text-emerald-400" />
+                       <EnvMetric icon={<MapPin size={16}/>} label="国家" value={activeStation.country} unit="" color="text-sky-400" />
+                       <EnvMetric icon={<MapPin size={16}/>} label="省份" value={activeStation.province} unit="" color="text-sky-400" />
+                       <EnvMetric icon={<Wind size={16}/>} label="流域" value={activeStation.metrics.basin} unit="" color="text-indigo-400" />
+                       <EnvMetric icon={<Activity size={16}/>} label="断面名称" value={activeStation.metrics.sectionName} unit="" color="text-emerald-400" />
+                       <EnvMetric icon={<Clock size={16}/>} label="监测时间" value={activeStation.metrics.monitoringTime} unit="" color="text-amber-400" />
+                       <EnvMetric icon={<ShieldCheck size={16}/>} label="水质类别" value={activeStation.metrics.waterQualityCategory} unit="" color="text-rose-400" />
+                       <EnvMetric icon={<Thermometer size={16}/>} label="水温" value={activeStation.metrics.waterTemp?.toString()} unit="℃" color="text-sky-400" />
+                       <EnvMetric icon={<Droplets size={16}/>} label="PH" value={activeStation.metrics.ph?.toString()} unit="" color="text-indigo-400" />
+                       <EnvMetric icon={<Zap size={16}/>} label="溶解氧" value={activeStation.metrics.do?.toString()} unit="mg/L" color="text-emerald-400" />
+                       <EnvMetric icon={<Activity size={16}/>} label="电导率" value={activeStation.metrics.conductivity?.toString()} unit="μS/cm" color="text-amber-400" />
+                       <EnvMetric icon={<Wind size={16}/>} label="浊度" value={activeStation.metrics.turbidity?.toString()} unit="NTU" color="text-rose-400" />
+                       <EnvMetric icon={<FlaskConical size={16}/>} label="高锰酸钾盐指数" value={activeStation.metrics.permanganateIndex?.toString()} unit="mg/L" color="text-cyan-400" />
+                       <EnvMetric icon={<FlaskConical size={16}/>} label="氨氮" value={activeStation.metrics.nh3n?.toString()} unit="mg/L" color="text-purple-400" />
+                       <EnvMetric icon={<FlaskConical size={16}/>} label="总磷" value={activeStation.metrics.tp?.toString()} unit="mg/L" color="text-sky-400" />
+                       <EnvMetric icon={<FlaskConical size={16}/>} label="总氮" value={activeStation.metrics.tn?.toString()} unit="mg/L" color="text-indigo-400" />
+                       <EnvMetric icon={<FlaskConical size={16}/>} label="叶绿素α" value={activeStation.metrics.chlorophyllA?.toString()} unit="mg/L" color="text-emerald-400" />
+                       <EnvMetric icon={<Activity size={16}/>} label="藻密度" value={activeStation.metrics.algalDensity?.toString()} unit="cells/L" color="text-amber-400" />
                      </>
                    ) : (
                      <>
@@ -406,7 +506,7 @@ const GroundNetworkView: React.FC = () => {
            {/* Maximize Toggle */}
            <button 
              onClick={() => setIsMaximized(!isMaximized)}
-             className="absolute top-6 left-8 z-[1000] p-2 bg-slate-800/50 hover:bg-sky-500/20 border border-sky-500/20 rounded-xl text-sky-400 transition-all"
+             className="absolute top-6 right-8 z-[1000] p-2 bg-slate-800/50 hover:bg-sky-500/20 border border-sky-500/20 rounded-xl text-sky-400 transition-all"
              title={isMaximized ? "退出全屏" : "全屏查看"}
            >
              {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
@@ -422,14 +522,289 @@ const GroundNetworkView: React.FC = () => {
                     const s = STATIONS.find(st => st.id === id);
                     if (s) {
                         setSelectedId(id);
+                        setSelectedCountry(s.country);
                         setSelectedProvince(s.province);
                         setSelectedCity(s.city);
+                        setSelectedCounty(s.county);
+                        setIsInfoModalOpen(true);
                     }
                  }} 
+                 selectedCountry={selectedCountry}
                  selectedProvince={selectedProvince}
                  selectedCity={selectedCity} 
+                 selectedCounty={selectedCounty}
               />
            </div>
+
+           {/* Bottom-Left Controls: Region Selection & Search */}
+           <div className="absolute bottom-8 left-8 z-20 flex items-center gap-3 pointer-events-auto">
+              {/* Region Selector Cascader */}
+              <div className="relative">
+                <button 
+                  onClick={() => setIsRegionMenuOpen(!isRegionMenuOpen)}
+                  className={`glass-panel rounded-xl border p-2.5 bg-[#020617]/80 backdrop-blur-md shadow-2xl flex items-center gap-2 min-w-[120px] transition-all ${isRegionMenuOpen ? 'border-sky-400 ring-1 ring-sky-400/30' : 'border-sky-500/30 hover:border-sky-500/50'}`}
+                >
+                  <MapPin size={14} className="text-sky-400" />
+                  <span className="text-[10px] font-bold text-white uppercase tracking-widest truncate max-w-[80px]">
+                    {selectedCounty || selectedCity || selectedProvince || selectedCountry || '区域选择'}
+                  </span>
+                  <ChevronDown size={12} className={`text-sky-400/50 transition-transform ${isRegionMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isRegionMenuOpen && (
+                  <div className="absolute bottom-full mb-3 left-0 w-64 glass-panel rounded-2xl border border-sky-500/30 bg-[#020617]/95 backdrop-blur-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
+                    {/* Menu Header */}
+                    <div className="p-3 border-b border-sky-500/20 flex items-center justify-between bg-sky-500/5">
+                      <div className="flex items-center gap-2">
+                        {menuLevel > 0 && (
+                          <button 
+                            onClick={() => setMenuLevel(prev => prev - 1)}
+                            className="p-1 hover:bg-white/10 rounded text-sky-400"
+                          >
+                            <ChevronRight size={14} className="rotate-180" />
+                          </button>
+                        )}
+                        <span className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">
+                          {menuLevel === 0 ? '选择国家' : menuLevel === 1 ? '选择省份' : menuLevel === 2 ? '选择城市' : '选择区县'}
+                        </span>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setSelectedCountry(null);
+                          setSelectedProvince(null);
+                          setSelectedCity(null);
+                          setSelectedCounty(null);
+                          setSelectedId(null);
+                          setMenuLevel(0);
+                          setIsRegionMenuOpen(false);
+                        }}
+                        className="text-[8px] font-bold text-slate-500 hover:text-sky-400 uppercase tracking-widest transition-colors"
+                      >
+                        重置
+                      </button>
+                    </div>
+
+                    {/* Menu Options */}
+                    <div className="max-h-64 overflow-y-auto custom-scrollbar p-1">
+                      {menuLevel === 0 && countries.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => {
+                            setSelectedCountry(c);
+                            setSelectedProvince(null);
+                            setSelectedCity(null);
+                            setSelectedCounty(null);
+                            setMenuLevel(1);
+                          }}
+                          className={`w-full p-2.5 flex items-center justify-between rounded-lg transition-all hover:bg-sky-500/10 text-left group ${selectedCountry === c ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400'}`}
+                        >
+                          <span className="text-[10px] font-bold">{c}</span>
+                          <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      ))}
+
+                      {menuLevel === 1 && provinces.map(p => (
+                        <button
+                          key={p}
+                          onClick={() => {
+                            setSelectedProvince(p);
+                            setSelectedCity(null);
+                            setSelectedCounty(null);
+                            setMenuLevel(2);
+                          }}
+                          className={`w-full p-2.5 flex items-center justify-between rounded-lg transition-all hover:bg-sky-500/10 text-left group ${selectedProvince === p ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400'}`}
+                        >
+                          <span className="text-[10px] font-bold">{p}</span>
+                          <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      ))}
+
+                      {menuLevel === 2 && cities.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => {
+                            setSelectedCity(c);
+                            setSelectedCounty(null);
+                            setMenuLevel(3);
+                          }}
+                          className={`w-full p-2.5 flex items-center justify-between rounded-lg transition-all hover:bg-sky-500/10 text-left group ${selectedCity === c ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400'}`}
+                        >
+                          <span className="text-[10px] font-bold">{c}</span>
+                          <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      ))}
+
+                      {menuLevel === 3 && counties.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => {
+                            setSelectedCounty(c);
+                            setIsRegionMenuOpen(false);
+                          }}
+                          className={`w-full p-2.5 flex items-center justify-between rounded-lg transition-all hover:bg-sky-500/10 text-left group ${selectedCounty === c ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400'}`}
+                        >
+                          <span className="text-[10px] font-bold">{c}</span>
+                          <ShieldCheck size={12} className="opacity-0 group-hover:opacity-100 text-emerald-400 transition-opacity" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative group w-64">
+                <div className="glass-panel rounded-xl border border-sky-500/30 p-2.5 flex items-center gap-2 bg-[#020617]/80 backdrop-blur-md shadow-2xl transition-all group-focus-within:border-sky-400">
+                  <Search size={16} className="text-sky-400 ml-1" />
+                  <input 
+                    type="text" 
+                    placeholder="搜索站点名称..." 
+                    className="bg-transparent border-none outline-none text-xs text-white w-full placeholder:text-slate-500"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                
+                {/* Search Results Dropdown */}
+                {searchResults.length > 0 && (
+                  <div className="absolute bottom-full mb-2 left-0 w-full glass-panel rounded-xl border border-sky-500/30 bg-[#020617]/95 backdrop-blur-xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-2 duration-200">
+                    <div className="p-2 border-b border-sky-500/10 bg-sky-500/5">
+                      <span className="text-[8px] font-bold text-sky-400 uppercase tracking-widest">搜索结果</span>
+                    </div>
+                    {searchResults.map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          setSelectedId(s.id);
+                          setSelectedCountry(s.country);
+                          setSelectedProvince(s.province);
+                          setSelectedCity(s.city);
+                          setSelectedCounty(s.county);
+                          setSearchTerm('');
+                        }}
+                        className="w-full p-2.5 flex items-center gap-3 hover:bg-sky-500/10 transition-colors border-b border-sky-500/5 last:border-0 text-left"
+                      >
+                        <div className={`w-2 h-2 rounded-full ${s.type === 'air' ? 'bg-sky-400' : s.type === 'water' ? 'bg-emerald-400' : 'bg-amber-400'}`}></div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[10px] text-white font-bold truncate">{s.name}</span>
+                          <span className="text-[8px] text-slate-500">{s.country} · {s.province} · {s.city} · {s.county}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+           </div>
+
+           {/* Station Info Modal Overlay */}
+           {isInfoModalOpen && activeStation && (
+             <div className="absolute inset-0 z-[1100] flex items-center justify-center p-8 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
+               <div className="w-full max-w-2xl glass-panel rounded-[32px] border border-sky-500/30 bg-[#020617]/95 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden animate-in zoom-in-95 duration-300">
+                 {/* Modal Header */}
+                 <div className="p-6 border-b border-sky-500/20 flex justify-between items-start bg-gradient-to-r from-sky-500/10 to-transparent">
+                   <div className="flex gap-4 items-center">
+                     <div className={`p-3 rounded-2xl ${activeStation.type === 'air' ? 'bg-sky-500/20 text-sky-400' : activeStation.type === 'water' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                       {activeStation.type === 'air' ? <Wind size={24} /> : activeStation.type === 'water' ? <Droplets size={24} /> : <Radio size={24} />}
+                     </div>
+                     <div>
+                       <h3 className="text-xl font-bold text-white tracking-tight">{activeStation.name}</h3>
+                       <div className="flex gap-2 mt-1 items-center">
+                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{activeStation.province} · {activeStation.city}</span>
+                         <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border ${activeStation.status === 'excellent' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : activeStation.status === 'polluted' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-sky-500/20 text-sky-400 border-sky-500/30'}`}>
+                           {activeStation.status === 'excellent' ? '状态: 优' : activeStation.status === 'good' ? '状态: 良' : '状态: 污染'}
+                         </span>
+                       </div>
+                     </div>
+                   </div>
+                   <button 
+                     onClick={() => setIsInfoModalOpen(false)}
+                     className="p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition-all"
+                   >
+                     <X size={20} />
+                   </button>
+                 </div>
+
+                 {/* Modal Content */}
+                 <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                   <div className="grid grid-cols-3 gap-4 mb-8">
+                     <div className="col-span-1 glass-panel rounded-2xl border border-sky-500/10 p-4 flex flex-col items-center justify-center bg-sky-500/5">
+                       <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">综合指数</span>
+                       <span className={`text-4xl font-orbitron font-bold ${activeStation.type === 'air' ? 'text-sky-400' : activeStation.type === 'water' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                         {activeStation.metrics.index}
+                       </span>
+                     </div>
+                     <div className="col-span-2 grid grid-cols-2 gap-3">
+                       <div className="bg-slate-900/40 p-3 rounded-xl border border-white/5">
+                         <span className="text-[8px] text-slate-500 uppercase font-bold block mb-1">设备状态</span>
+                         <div className="flex items-center gap-2">
+                           <ShieldCheck size={14} className="text-emerald-400" />
+                           <span className="text-xs font-bold text-white">运行正常</span>
+                         </div>
+                       </div>
+                       <div className="bg-slate-900/40 p-3 rounded-xl border border-white/5">
+                         <span className="text-[8px] text-slate-500 uppercase font-bold block mb-1">最后同步</span>
+                         <div className="flex items-center gap-2">
+                           <Clock size={14} className="text-sky-400" />
+                           <span className="text-xs font-bold text-white">{activeStation.deviceStatus.lastSync}</span>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+
+                   <h4 className="text-[10px] font-bold text-sky-400 uppercase tracking-[0.2em] mb-4 border-l-2 border-sky-500 pl-3">详细监测指标</h4>
+                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                     {activeStation.type === 'air' ? (
+                       <>
+                         <ModalMetric label="PM2.5" value={activeStation.metrics.pm25?.toString()} unit="μg/m³" />
+                         <ModalMetric label="PM10" value={activeStation.metrics.pm10?.toString()} unit="μg/m³" />
+                         <ModalMetric label="CO" value={activeStation.metrics.co?.toString()} unit="mg/m³" />
+                         <ModalMetric label="CO2" value={activeStation.metrics.co2?.toString()} unit="ppm" />
+                         <ModalMetric label="SO2" value={activeStation.metrics.so2?.toString()} unit="μg/m³" />
+                         <ModalMetric label="NO2" value={activeStation.metrics.no2?.toString()} unit="μg/m³" />
+                         <ModalMetric label="O3" value={activeStation.metrics.o3?.toString()} unit="μg/m³" />
+                         <ModalMetric label="温度" value={activeStation.deviceStatus.temp.toString()} unit="°C" />
+                         <ModalMetric label="湿度" value={activeStation.deviceStatus.humi.toString()} unit="%" />
+                       </>
+                     ) : activeStation.type === 'water' ? (
+                       <>
+                         <ModalMetric label="流域" value={activeStation.metrics.basin} unit="" />
+                         <ModalMetric label="断面" value={activeStation.metrics.sectionName} unit="" />
+                         <ModalMetric label="水质类别" value={activeStation.metrics.waterQualityCategory} unit="" />
+                         <ModalMetric label="水温" value={activeStation.metrics.waterTemp?.toString()} unit="℃" />
+                         <ModalMetric label="PH" value={activeStation.metrics.ph?.toString()} unit="" />
+                         <ModalMetric label="溶解氧" value={activeStation.metrics.do?.toString()} unit="mg/L" />
+                         <ModalMetric label="电导率" value={activeStation.metrics.conductivity?.toString()} unit="μS/cm" />
+                         <ModalMetric label="浊度" value={activeStation.metrics.turbidity?.toString()} unit="NTU" />
+                         <ModalMetric label="高锰酸钾" value={activeStation.metrics.permanganateIndex?.toString()} unit="mg/L" />
+                         <ModalMetric label="氨氮" value={activeStation.metrics.nh3n?.toString()} unit="mg/L" />
+                         <ModalMetric label="总磷" value={activeStation.metrics.tp?.toString()} unit="mg/L" />
+                         <ModalMetric label="总氮" value={activeStation.metrics.tn?.toString()} unit="mg/L" />
+                       </>
+                     ) : (
+                       <>
+                         <ModalMetric label="实时声级" value={activeStation.metrics.noise?.toString()} unit="dB" />
+                         <ModalMetric label="主导频率" value={activeStation.metrics.freq?.toString()} unit="Hz" />
+                         <ModalMetric label="峰值声压" value={activeStation.metrics.dbMax?.toString()} unit="dB" />
+                         <ModalMetric label="底噪水平" value={activeStation.metrics.dbMin?.toString()} unit="dB" />
+                         <ModalMetric label="计算负载" value={activeStation.deviceStatus.load.toString()} unit="%" />
+                         <ModalMetric label="信号强度" value={activeStation.deviceStatus.signal.toString()} unit="%" />
+                       </>
+                     )}
+                   </div>
+                 </div>
+
+                 {/* Modal Footer */}
+                 <div className="p-6 border-t border-sky-500/10 bg-slate-900/20 flex justify-end">
+                   <button 
+                     onClick={() => setIsInfoModalOpen(false)}
+                     className="px-6 py-2 bg-sky-500 hover:bg-sky-400 text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(56,189,248,0.3)]"
+                   >
+                     确认关闭
+                   </button>
+                 </div>
+               </div>
+             </div>
+           )}
 
            <div className="absolute bottom-8 right-8 z-20">
               <div 
@@ -482,7 +857,7 @@ const GroundNetworkView: React.FC = () => {
         {/* 右侧看板：综合排行模块 */}
         <div className="col-span-2 flex flex-col gap-4 min-h-0">
            <ChartCard 
-             title="全国监测站质量排行" 
+             title="全球监测站质量排行" 
              className="flex-1 overflow-hidden"
            >
               <div className="h-full flex flex-col">
@@ -590,6 +965,16 @@ const SimpleStat = ({ label, value, unit, icon }: any) => (
         <span className="font-orbitron font-bold text-sky-200">{value}</span>
         <span className="text-[7px] text-slate-600 font-bold uppercase">{unit}</span>
      </div>
+  </div>
+);
+
+const ModalMetric = ({ label, value, unit }: any) => (
+  <div className="bg-slate-900/60 p-3 rounded-xl border border-sky-500/5 flex flex-col gap-1">
+    <span className="text-[8px] text-slate-500 font-bold uppercase tracking-tighter truncate">{label}</span>
+    <div className="flex items-baseline gap-1">
+      <span className="text-sm font-bold font-orbitron text-white truncate">{value}</span>
+      <span className="text-[7px] text-slate-600 font-bold uppercase">{unit}</span>
+    </div>
   </div>
 );
 

@@ -584,7 +584,7 @@ const ServerView: React.FC = () => {
                   ))}
                 </div>
               </div>
-              <div className="px-4 py-1.5 bg-emerald-500/10 border border-emerald-400/20 rounded-full text-[9px] text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-2">
+              <div className="px-4 py-1.5 bg-emerald-500/10 border border-emerald-400/20 rounded-full text-[9px] text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-2 mr-12">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                 系统状态: 稳定
               </div>

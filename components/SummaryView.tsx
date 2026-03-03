@@ -225,7 +225,7 @@ const SummaryView: React.FC = () => {
            {/* Maximize Toggle */}
            <button 
              onClick={() => setIsMaximized(!isMaximized)}
-             className="absolute top-6 left-8 z-[1000] p-2 bg-slate-800/50 hover:bg-sky-500/20 border border-sky-500/20 rounded-xl text-sky-400 transition-all"
+             className="absolute top-6 right-8 z-[1000] p-2 bg-slate-800/50 hover:bg-sky-500/20 border border-sky-500/20 rounded-xl text-sky-400 transition-all"
              title={isMaximized ? "退出全屏" : "全屏查看"}
            >
              {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
